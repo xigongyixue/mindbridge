@@ -10,10 +10,12 @@ from app.services.knowledge import KnowledgeService
 
 
 def create_schema() -> None:
+    """创建数据库表结构。"""
     Base.metadata.create_all(bind=engine)
 
 
 def seed_data(db: Session) -> None:
+    """初始化种子用户与知识库数据。"""
     if db.query(UserAccount).count() == 0:
         admin = UserAccount(
             username="admin",

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -13,7 +12,10 @@ from app.models.entities import AgentRunTrace, ChatSession, UserAccount
 
 
 class AgentTraceService:
+    """持久化 Agent 运行追踪记录的服务。"""
+
     def __init__(self, db: Session):
+        """初始化追踪服务，绑定数据库会话。"""
         self.db = db
 
     def save_run(
@@ -26,6 +28,7 @@ class AgentTraceService:
         agent_run: AgentRunResult,
         report_id: int | None,
     ) -> AgentRunTrace:
+        """将一轮 Agent 运行的完整追踪数据（步骤、知识、消息、评估）保存到数据库。"""
         trace = AgentRunTrace(
             user_id=user.id,
             session_id=session.id,
@@ -35,7 +38,7 @@ class AgentTraceService:
             original_input=original_input,
             sanitized_input=sanitized_input,
             memory_brief=memory_brief,
-            agent_steps_json=_json(_agent_steps_with_collaboration(agent_run)),
+            agent_steps_json=_json(agent_run.steps),
             retrieved_knowledge_json=_json(agent_run.retrieved_knowledge),
             response_messages_json=_json(agent_run.response_messages),
             assessment_json=_json(agent_run.assessment or {}),
@@ -47,54 +50,12 @@ class AgentTraceService:
 
 
 def _json(value: Any) -> str:
+    """将任意 Python 对象序列化为 JSON 字符串，支持 dataclass/enum/pydantic 模型。"""
     return json.dumps(_to_jsonable(value), ensure_ascii=False, default=str)
 
 
-def _agent_steps_with_collaboration(agent_run: AgentRunResult) -> list[Any]:
-    entries: list[Any] = [*agent_run.steps]
-    entries.extend(
-        {
-            "kind": "agent_event",
-            "type": getattr(event.type, "value", event.type),
-            "actor": event.actor,
-            "taskId": event.task_id,
-            "artifactId": event.artifact_id,
-            "message": event.message,
-            "metadata": event.metadata,
-        }
-        for event in agent_run.collaboration_events
-    )
-    entries.extend(
-        {
-            "kind": "agent_task",
-            "id": task.id,
-            "title": task.title,
-            "status": getattr(task.status, "value", task.status),
-            "priority": getattr(task.priority, "value", task.priority),
-            "requiredCapabilities": sorted(task.required_capabilities),
-            "claimedBy": list(task.claimed_by),
-            "createdBy": task.created_by,
-            "metadata": task.metadata,
-        }
-        for task in agent_run.collaboration_tasks
-    )
-    entries.extend(
-        {
-            "kind": "agent_artifact",
-            "id": artifact.id,
-            "owner": artifact.owner,
-            "artifactKind": artifact.kind,
-            "confidence": artifact.confidence,
-            "taskId": artifact.task_id,
-            "metadata": artifact.metadata,
-            "payload": artifact.payload,
-        }
-        for artifact in agent_run.collaboration_artifacts
-    )
-    return entries
-
-
 def _to_jsonable(value: Any) -> Any:
+    """递归地将 dataclass、enum、pydantic 模型等转换为可 JSON 序列化的原生类型。"""
     if isinstance(value, Enum):
         return value.value
     if is_dataclass(value):

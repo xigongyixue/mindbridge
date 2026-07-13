@@ -10,6 +10,7 @@ from app.services.knowledge import KnowledgeService
 
 
 def evaluate() -> dict:
+    """执行 RAG 检索评估并输出报告。"""
     settings = get_settings()
     create_schema()
     db = SessionLocal()
@@ -43,6 +44,7 @@ def evaluate() -> dict:
 
 
 def evaluate_case(service: KnowledgeService, case: dict, top_k: int) -> dict:
+    """评估单个测试用例的检索效果。"""
     retrieved = service.retrieve(case["question"], top_k)
     expected_sources = {source.lower() for source in case.get("expectedSources", [])}
     expected_terms = [term.lower() for term in case.get("expectedTerms", [])]
@@ -80,6 +82,7 @@ def evaluate_case(service: KnowledgeService, case: dict, top_k: int) -> dict:
 
 
 def is_relevant(source: str, content: str, expected_sources: set[str], expected_terms: list[str]) -> bool:
+    """判断检索结果是否与预期相关。"""
     if source.lower() in expected_sources:
         return True
     lower = content.lower()
@@ -87,6 +90,7 @@ def is_relevant(source: str, content: str, expected_sources: set[str], expected_
 
 
 def ndcg(items: list[dict]) -> float:
+    """计算 NDCG 指标值。"""
     dcg = 0.0
     relevant = 0
     for index, item in enumerate(items):
@@ -104,4 +108,3 @@ if __name__ == "__main__":
     print("RAG evaluation completed.")
     for key in ["totalCases", "topK", "recallAtK", "precisionAtK", "mrr", "ndcgAtK", "hitRate", "averageFirstRelevantRank"]:
         print(f"{key}={report[key]}")
-

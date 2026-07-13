@@ -22,16 +22,21 @@ from app.services.trace import AgentTraceService
 
 @dataclass
 class AgentToolPlan:
+    """工具派发计划，描述本轮需要执行的后台工具及其关联报告。"""
+
     report_id: int | None
     risk_level: str | None
 
     @property
     def requires_tools(self) -> bool:
+        """判断是否有需要派发的工具（存在关联报告时为 True）。"""
         return self.report_id is not None
 
 
 @dataclass
 class AgentHarnessOutcome:
+    """单轮 Agent 运行的完整业务输出，包含回复消息、报告、追踪等。"""
+
     session: ChatSession
     original_input: str
     model_input: str
@@ -47,20 +52,21 @@ class AgentHarnessOutcome:
 
 
 class MindBridgeAgentHarness:
-    """Runtime harness for one MindBridge agent turn.
+    """单轮 Agent 运行的业务编排层。
 
-    The harness owns business orchestration around the agent runtime. HTTP/SSE
-    code can stay thin while this class manages input preparation, persistence,
-    risk report creation, tool planning, and trace data.
+    管理 输入脱敏、会话解析、Agent 运行时调用、消息持久化、
+    风险报告创建、工具计划和追踪数据，让 HTTP/SSE 层保持轻量。
     """
 
     def __init__(self, db: Session, settings: Settings):
+        """初始化 harness，创建脱敏器和短期记忆存储。"""
         self.db = db
         self.settings = settings
         self.privacy = PrivacySanitizer()
         self.memory = RedisShortTermMemoryStore(settings)
 
     def run(self, user: UserAccount, request: ChatRequest) -> AgentHarnessOutcome:
+        """执行完整的一轮对话：脱敏 -> 会话解析 -> Agent 运行 -> 持久化 -> 报告 -> 追踪。"""
         original_input = request.message.strip()
         model_input = self.privacy.sanitize(original_input)
         session = self._resolve_session(user, request.sessionId, original_input)
@@ -95,9 +101,11 @@ class MindBridgeAgentHarness:
         )
 
     def save_assistant_message(self, user: UserAccount, session: ChatSession, content: str) -> None:
+        """保存助手回复消息到数据库和 Redis 短期记忆。"""
         self.save_message(user, session, MessageRole.ASSISTANT, content)
 
     async def dispatch_tools(self, tool_plan: AgentToolPlan) -> list[str]:
+        """根据工具计划异步派发后台工具：启用队列时入队，否则通过 MCP 同步执行。"""
         if tool_plan.report_id is None:
             return []
         if self.settings.tool_queue_enabled:
@@ -106,6 +114,7 @@ class MindBridgeAgentHarness:
         return await MindBridgeMcpToolClient(self.settings).handle_report(tool_plan.report_id, tool_plan.risk_level)
 
     def save_message(self, user: UserAccount, session: ChatSession, role: MessageRole, content: str) -> None:
+        """将消息写入数据库并同步到 Redis 短期记忆。"""
         self.db.add(ChatMessage(user_id=user.id, session_id=session.id, role=role.value, content=content))
         session.touch()
         self.db.add(session)
@@ -113,6 +122,7 @@ class MindBridgeAgentHarness:
         self.memory.append(session.public_id, role.value, content)
 
     def _resolve_session(self, user: UserAccount, public_id: str | None, text: str) -> ChatSession:
+        """根据 public_id 查找已有会话，或创建新会话。"""
         if public_id:
             session = self.db.query(ChatSession).filter(ChatSession.public_id == public_id, ChatSession.user_id == user.id).first()
             if session is None:
@@ -125,6 +135,7 @@ class MindBridgeAgentHarness:
         return session
 
     def _create_report(self, user: UserAccount, session: ChatSession, text: str, agent_run) -> PsychologicalReport | None:
+        """当意图非 CHAT 时，根据评估结果创建心理风险评估报告并持久化。"""
         if not agent_run.requires_report or agent_run.assessment is None:
             return None
         report = PsychologicalReport(

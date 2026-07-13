@@ -14,6 +14,8 @@ from app.models.entities import PsychologicalReport, ToolAuditRecord, ToolJob
 
 @dataclass(frozen=True)
 class ToolPolicy:
+    """工具执行策略定义。"""
+
     name: str
     description: str
     allowed_risks: tuple[str, ...]
@@ -21,6 +23,8 @@ class ToolPolicy:
 
 
 class ToolPolicyRegistry:
+    """工具策略注册表。"""
+
     POLICIES: dict[str, ToolPolicy] = {
         ToolJobKind.EXCEL_REPORT.value: ToolPolicy(
             name=ToolJobKind.EXCEL_REPORT.value,
@@ -46,10 +50,12 @@ class ToolPolicyRegistry:
 
     @classmethod
     def policy_for(cls, tool_name: str) -> ToolPolicy | None:
+        """根据工具名称获取策略。"""
         return cls.POLICIES.get(tool_name)
 
     @classmethod
     def authorize(cls, tool_name: str, report: PsychologicalReport | None) -> tuple[bool, str, ToolPolicy | None]:
+        """校验工具是否允许在当前报告上执行。"""
         policy = cls.policy_for(tool_name)
         if policy is None:
             return False, f"未知工具：{tool_name}", None
@@ -62,10 +68,14 @@ class ToolPolicyRegistry:
 
 
 class ToolGovernanceService:
+    """工具治理服务，负责审计与授权。"""
+
     def __init__(self, db: Session):
+        """初始化数据库会话。"""
         self.db = db
 
     def start_job(self, job: ToolJob, report: PsychologicalReport | None) -> ToolAuditRecord:
+        """启动工具任务并写入审计记录。"""
         allowed, reason, policy = ToolPolicyRegistry.authorize(job.kind, report)
         record = ToolAuditRecord(
             job_id=job.id,
@@ -91,11 +101,13 @@ class ToolGovernanceService:
         return record
 
     def require_allowed(self, job: ToolJob, report: PsychologicalReport | None) -> None:
+        """要求工具授权通过，否则抛出异常。"""
         allowed, reason, _ = ToolPolicyRegistry.authorize(job.kind, report)
         if not allowed:
             raise RuntimeError(reason)
 
     def finish(self, record: ToolAuditRecord, status: str, reason: str = "", payload: dict[str, Any] | None = None) -> ToolAuditRecord:
+        """更新审计记录的最终状态。"""
         record.status = status
         record.reason = reason or record.reason
         if payload is not None:
@@ -107,4 +119,5 @@ class ToolGovernanceService:
 
 
 def _json(value: Any) -> str:
+    """将值序列化为 JSON 字符串。"""
     return json.dumps(value, ensure_ascii=False, default=str)

@@ -22,11 +22,15 @@ logger = logging.getLogger(__name__)
 
 
 class ToolQueueService:
+    """工具队列入队服务。"""
+
     def __init__(self, db: Session, settings: Settings):
+        """初始化数据库会话与配置。"""
         self.db = db
         self.settings = settings
 
     def enqueue_report(self, report_id: int, risk_level: str | None) -> list[ToolJob]:
+        """根据风险等级将报告加入工具队列。"""
         excel_job = self._find_or_create(ToolJobKind.EXCEL_REPORT.value, report_id)
         jobs = [excel_job]
         case_job = None
@@ -40,6 +44,7 @@ class ToolQueueService:
         return jobs
 
     def _find_or_create(self, kind: str, report_id: int, depends_on_job_id: int | None = None) -> ToolJob:
+        """查找已有任务或创建新任务。"""
         existing = (
             self.db.query(ToolJob)
             .filter(ToolJob.report_id == report_id, ToolJob.kind == kind)
@@ -64,12 +69,16 @@ class ToolQueueService:
 
 
 class RateLimiter:
+    """基于滑动窗口的速率限制器。"""
+
     def __init__(self, limit_per_minute: int):
+        """初始化每分钟限制次数。"""
         self.limit = max(0, limit_per_minute)
         self.events: deque[float] = deque()
         self.lock = threading.Lock()
 
     def allow(self) -> tuple[bool, float]:
+        """判断当前请求是否被允许。"""
         if self.limit <= 0:
             return True, 0.0
         now_ts = time.monotonic()
@@ -84,7 +93,10 @@ class RateLimiter:
 
 
 class ToolQueueWorker:
+    """工具队列后台工作器。"""
+
     def __init__(self, settings: Settings):
+        """初始化线程池与配置。"""
         self.settings = settings
         self.stop_event = threading.Event()
         self.dispatcher: threading.Thread | None = None
@@ -99,6 +111,7 @@ class ToolQueueWorker:
         self.email_limiter = RateLimiter(settings.alert_email_rate_limit_per_minute)
 
     def start(self) -> None:
+        """启动调度线程。"""
         if not self.settings.tool_queue_enabled or self.dispatcher is not None:
             return
         self._recover_running_jobs()
@@ -106,6 +119,7 @@ class ToolQueueWorker:
         self.dispatcher.start()
 
     def stop(self) -> None:
+        """停止调度线程并关闭线程池。"""
         self.stop_event.set()
         if self.dispatcher is not None:
             self.dispatcher.join(timeout=5)
@@ -113,6 +127,7 @@ class ToolQueueWorker:
         self.email_executor.shutdown(wait=False, cancel_futures=True)
 
     def _loop(self) -> None:
+        """调度循环，周期性分发任务。"""
         while not self.stop_event.is_set():
             try:
                 self._dispatch_once()
@@ -121,6 +136,7 @@ class ToolQueueWorker:
             self.stop_event.wait(self.settings.tool_queue_poll_interval_seconds)
 
     def _dispatch_once(self) -> None:
+        """拉取待处理任务并提交到线程池。"""
         db = SessionLocal()
         try:
             now = datetime.utcnow()
@@ -142,11 +158,13 @@ class ToolQueueWorker:
             db.close()
 
     def _executor_for(self, job: ToolJob) -> ThreadPoolExecutor:
+        """根据任务类型选择对应线程池。"""
         if job.kind in {ToolJobKind.EXCEL_REPORT.value, ToolJobKind.CASE_CREATE.value}:
             return self.excel_executor
         return self.email_executor
 
     def _run_job(self, job_id: int) -> None:
+        """执行单个工具任务。"""
         db = SessionLocal()
         try:
             job = db.get(ToolJob, job_id)
@@ -179,6 +197,7 @@ class ToolQueueWorker:
             db.close()
 
     def _execute(self, db: Session, job: ToolJob) -> None:
+        """根据任务类型执行具体工具逻辑。"""
         report = db.get(PsychologicalReport, job.report_id)
         if report is None:
             raise RuntimeError(f"report {job.report_id} not found")
@@ -205,6 +224,7 @@ class ToolQueueWorker:
         raise RuntimeError(f"unknown tool job kind: {job.kind}")
 
     def _dependency_ready(self, db: Session, job: ToolJob) -> bool:
+        """检查任务的依赖是否已就绪。"""
         if job.kind not in {ToolJobKind.RISK_ALERT.value, ToolJobKind.ALERT_SEND.value}:
             return True
         if job.depends_on_job_id:
@@ -222,11 +242,13 @@ class ToolQueueWorker:
         )
 
     def _dependency_wait_reason(self, job: ToolJob) -> str:
+        """返回依赖未就绪时的等待原因。"""
         if job.kind == ToolJobKind.ALERT_SEND.value:
             return "等待风险个案创建成功后再发送预警"
         return "等待 Excel 台账写入成功后再发送预警"
 
     def _requeue(self, db: Session, job: ToolJob, reason: str, delay_seconds: float) -> None:
+        """将任务重新入队并延迟执行。"""
         job.status = ToolJobStatus.PENDING.value
         job.last_error = reason
         job.run_after = datetime.utcnow() + timedelta(seconds=max(1.0, delay_seconds))
@@ -235,6 +257,7 @@ class ToolQueueWorker:
         db.commit()
 
     def _fail_or_dead_letter(self, db: Session, job_id: int, exc: Exception) -> None:
+        """处理任务失败，重试或进入死信队列。"""
         job = db.get(ToolJob, job_id)
         if job is None:
             return
@@ -262,6 +285,7 @@ class ToolQueueWorker:
         db.commit()
 
     def _recover_running_jobs(self) -> None:
+        """服务重启后恢复运行中的任务。"""
         db = SessionLocal()
         try:
             rows = db.query(ToolJob).filter(ToolJob.status == ToolJobStatus.RUNNING.value).all()
@@ -280,6 +304,7 @@ _worker: ToolQueueWorker | None = None
 
 
 def get_tool_queue_worker(settings: Settings) -> ToolQueueWorker:
+    """获取或创建全局工具队列工作器。"""
     global _worker
     if _worker is None:
         _worker = ToolQueueWorker(settings)

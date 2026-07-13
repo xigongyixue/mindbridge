@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SearchResult:
+    """知识检索结果数据类。"""
     chunk_id: int | None
     source: str
     content: str
@@ -28,21 +29,27 @@ class SearchResult:
 
 @dataclass
 class RetrievalCandidate:
+    """检索候选项，包含向量与BM25得分。"""
     result: SearchResult
     vector_score: float = 0.0
     bm25_score: float = 0.0
 
 
 class KnowledgeService:
+    """知识库管理服务，负责检索与索引。"""
+
     def __init__(self, db: Session, settings: Settings):
+        """初始化知识服务实例。"""
         self.db = db
         self.settings = settings
         self.vector_store = ChromaKnowledgeStore(settings)
 
     def count(self) -> int:
+        """返回知识分块总数。"""
         return self.db.query(KnowledgeChunk).count()
 
     def ensure_source(self, source: str, content: str) -> int:
+        """确保指定来源已索引，无变化则跳过。"""
         chunks = chunk_text(content, self.settings.knowledge_chunk_size, self.settings.knowledge_chunk_overlap)
         existing = [
             chunk.content
@@ -56,6 +63,7 @@ class KnowledgeService:
         return self.ingest(source, content)
 
     def status(self) -> dict:
+        """返回知识库与向量库的运行状态信息。"""
         vector_chunks = None
         vector_error = getattr(self.vector_store, "error", "")
         if self.vector_store.can_embed:
@@ -87,6 +95,7 @@ class KnowledgeService:
         }
 
     def rebuild_vector_index(self) -> int:
+        """重建向量索引并返回分块数量。"""
         if not self.vector_store.can_embed:
             raise RuntimeError(getattr(self.vector_store, "error", "") or "Chroma 向量库不可用")
         rows = self.db.query(KnowledgeChunk).order_by(KnowledgeChunk.source.asc(), KnowledgeChunk.source_index.asc()).all()
@@ -95,6 +104,7 @@ class KnowledgeService:
         return len(rows)
 
     def backup_vector_index(self) -> str:
+        """备份向量索引并返回快照路径。"""
         if not self.vector_store.can_embed:
             raise RuntimeError(getattr(self.vector_store, "error", "") or "Chroma 向量库不可用")
         snapshot = self.vector_store.snapshot()
@@ -103,6 +113,7 @@ class KnowledgeService:
         return snapshot
 
     def ingest(self, source: str, content: str) -> int:
+        """将文档分块并写入数据库与向量库。"""
         chunks = chunk_text(content, self.settings.knowledge_chunk_size, self.settings.knowledge_chunk_overlap)
         self._delete_vector_source(source)
         self.db.query(KnowledgeChunk).filter(KnowledgeChunk.source == source).delete()
@@ -117,6 +128,7 @@ class KnowledgeService:
         return len(chunks)
 
     def ingest_file(self, filename: str, data: bytes) -> int:
+        """根据文件类型提取文本并导入知识库。"""
         lower = filename.lower()
         if lower.endswith(".pdf"):
             text = extract_pdf(data)
@@ -125,6 +137,7 @@ class KnowledgeService:
         return self.ingest(filename, text)
 
     def retrieve(self, query: str, top_k: int | None = None) -> list[SearchResult]:
+        """混合检索知识库，返回排序后的结果列表。"""
         top_k = top_k or self.settings.knowledge_top_k
         candidate_k = self._candidate_k(top_k)
         chunks = self.db.query(KnowledgeChunk).all()
@@ -138,6 +151,7 @@ class KnowledgeService:
         return []
 
     def _retrieve_bm25(self, query: str, top_k: int, chunks: list[KnowledgeChunk] | None = None) -> list[SearchResult]:
+        """使用BM25算法检索知识分块。"""
         chunks = chunks if chunks is not None else self.db.query(KnowledgeChunk).all()
         scores = bm25_scores(query, chunks)
         ranked = [
@@ -155,6 +169,7 @@ class KnowledgeService:
         bm25_results: list[SearchResult],
         top_k: int,
     ) -> list[SearchResult]:
+        """融合向量与BM25结果并重排序。"""
         candidates: dict[Hashable, RetrievalCandidate] = {}
         vector_scores = {result_key(item): item.score for item in vector_results if item.score > 0}
         bm25_scores_by_key = {result_key(item): item.score for item in bm25_results if item.score > 0}
@@ -192,6 +207,7 @@ class KnowledgeService:
         return self._rerank(query, fused, top_k)
 
     def _rerank(self, query: str, candidates: list[SearchResult], top_k: int) -> list[SearchResult]:
+        """对候选结果进行二次重排序。"""
         if not self.settings.knowledge_rerank_enabled:
             return candidates[:top_k]
         reranked = [
@@ -202,9 +218,11 @@ class KnowledgeService:
         return reranked[:top_k]
 
     def _candidate_k(self, top_k: int) -> int:
+        """返回候选集大小，取较大值。"""
         return max(top_k, self.settings.knowledge_candidate_k)
 
     def _retrieve_vector(self, query: str, top_k: int) -> list[SearchResult]:
+        """通过向量相似度检索知识分块。"""
         if not self.vector_store.can_embed:
             return []
         try:
@@ -228,6 +246,7 @@ class KnowledgeService:
         return results
 
     def _ensure_vector_index(self) -> None:
+        """确保向量索引与数据库保持同步。"""
         rows = self.db.query(KnowledgeChunk).order_by(KnowledgeChunk.source.asc(), KnowledgeChunk.source_index.asc()).all()
         if not rows:
             return
@@ -241,6 +260,7 @@ class KnowledgeService:
         self.db.commit()
 
     def _delete_vector_source(self, source: str) -> None:
+        """删除指定来源的向量数据。"""
         if not self.vector_store.can_embed:
             return
         try:
@@ -249,6 +269,7 @@ class KnowledgeService:
             self._handle_vector_error("delete_source", exc)
 
     def _index_vector_chunks(self, chunks: list[KnowledgeChunk]) -> None:
+        """为知识分块生成嵌入并写入向量库。"""
         if not chunks or not self.vector_store.can_embed:
             return
         try:
@@ -260,6 +281,7 @@ class KnowledgeService:
             self._handle_vector_error("index", exc)
 
     def _sync_vector_chunks(self, chunks: list[KnowledgeChunk]) -> None:
+        """同步知识分块嵌入到向量库。"""
         if not chunks or not self.vector_store.can_embed:
             return
         try:
@@ -271,6 +293,7 @@ class KnowledgeService:
             self._handle_vector_error("sync", exc)
 
     def _embeddings_for_chunks(self, chunks: list[KnowledgeChunk]) -> list[list[float]]:
+        """获取分块嵌入向量，缺失则重新生成。"""
         embeddings: list[list[float] | None] = []
         missing_indexes = []
         missing_texts = []
@@ -290,6 +313,7 @@ class KnowledgeService:
         return resolved
 
     def _handle_vector_error(self, action: str, exc: Exception) -> None:
+        """处理向量库错误，按配置决定回退或抛出。"""
         if self.settings.knowledge_vector_required:
             raise exc
         logger.warning(
@@ -301,6 +325,7 @@ class KnowledgeService:
         )
 
     def _expand_best(self, ranked: list[SearchResult], top_k: int) -> list[SearchResult]:
+        """展开最佳匹配的相邻分块并合并结果。"""
         if not ranked:
             return []
         best = ranked[0]
@@ -312,6 +337,7 @@ class KnowledgeService:
         return results
 
     def _expand(self, result: SearchResult) -> SearchResult:
+        """扩展检索结果，包含相邻分块内容。"""
         if result.chunk_id is None:
             return result
         chunk = self.db.get(KnowledgeChunk, result.chunk_id)
@@ -329,6 +355,7 @@ class KnowledgeService:
 
 
 def chunk_text(content: str, size: int, overlap: int) -> list[str]:
+    """将文本按指定大小和重叠分块。"""
     text = re.sub(r"\s+", " ", content or "").strip()
     if not text:
         return []
@@ -342,10 +369,12 @@ def chunk_text(content: str, size: int, overlap: int) -> list[str]:
 
 
 def hybrid_score(query: str, content: str) -> float:
+    """计算查询与内容的混合相似度得分。"""
     return token_cosine(query, content) * 0.75 + keyword_score(query, content) * 0.25
 
 
 def bm25_scores(query: str, chunks: list[KnowledgeChunk]) -> dict[int, float]:
+    """计算查询与各分块的BM25得分。"""
     query_terms = counts(tokenize(query))
     if not query_terms or not chunks:
         return {}
@@ -385,6 +414,7 @@ def bm25_scores(query: str, chunks: list[KnowledgeChunk]) -> dict[int, float]:
 
 
 def rerank_score(query: str, content: str, base_score: float) -> float:
+    """计算重排序综合得分。"""
     lexical = hybrid_score(query, content)
     coverage = query_token_coverage(query, content)
     phrase = phrase_score(query, content)
@@ -392,6 +422,7 @@ def rerank_score(query: str, content: str, base_score: float) -> float:
 
 
 def query_token_coverage(query: str, content: str) -> float:
+    """计算查询词在内容中的覆盖率。"""
     query_tokens = set(tokenize(query))
     if not query_tokens:
         return 0.0
@@ -400,6 +431,7 @@ def query_token_coverage(query: str, content: str) -> float:
 
 
 def phrase_score(query: str, content: str) -> float:
+    """计算查询短语在内容中的匹配得分。"""
     normalized_query = compact_text(query)
     if not normalized_query:
         return 0.0
@@ -410,10 +442,12 @@ def phrase_score(query: str, content: str) -> float:
 
 
 def compact_text(text: str) -> str:
+    """去除空白并转小写，返回紧凑文本。"""
     return re.sub(r"\s+", "", text.lower())
 
 
 def normalize_scores(scores: dict[Hashable, float]) -> dict[Hashable, float]:
+    """将得分归一化到0至1区间。"""
     positives = [score for score in scores.values() if score > 0]
     if not positives:
         return {key: 0.0 for key in scores}
@@ -428,14 +462,17 @@ def normalize_scores(scores: dict[Hashable, float]) -> dict[Hashable, float]:
 
 
 def result_key(result: SearchResult) -> Hashable:
+    """返回检索结果的唯一标识键。"""
     return result.chunk_id if result.chunk_id is not None else (result.source, result.content)
 
 
 def replace_score(result: SearchResult, score: float) -> SearchResult:
+    """替换检索结果的得分并返回新实例。"""
     return SearchResult(result.chunk_id, result.source, result.content, score)
 
 
 def parse_embedding(raw: str | None) -> list[float] | None:
+    """解析JSON格式的嵌入向量。"""
     if not raw:
         return None
     try:
@@ -450,6 +487,7 @@ def parse_embedding(raw: str | None) -> list[float] | None:
 
 
 def tokenize(text: str) -> list[str]:
+    """对文本进行分词，支持中英文。"""
     words = re.findall(r"[a-zA-Z0-9_]+|[\u4e00-\u9fff]", text.lower())
     grams = words[:]
     compact = "".join(ch for ch in text.lower() if "\u4e00" <= ch <= "\u9fff")
@@ -458,6 +496,7 @@ def tokenize(text: str) -> list[str]:
 
 
 def token_cosine(left: str, right: str) -> float:
+    """计算两段文本的词频余弦相似度。"""
     left_counts = counts(tokenize(left))
     right_counts = counts(tokenize(right))
     if not left_counts or not right_counts:
@@ -469,6 +508,7 @@ def token_cosine(left: str, right: str) -> float:
 
 
 def keyword_score(query: str, content: str) -> float:
+    """计算查询关键词在内容中的匹配比例。"""
     terms = [term for term in re.split(r"[\s，。！？、；：,.!?;:]+", query.lower()) if len(term) >= 2]
     if not terms:
         return 0.0
@@ -478,6 +518,7 @@ def keyword_score(query: str, content: str) -> float:
 
 
 def counts(values: list[str]) -> dict[str, int]:
+    """统计列表中各元素的出现次数。"""
     result: dict[str, int] = {}
     for value in values:
         result[value] = result.get(value, 0) + 1
@@ -485,6 +526,7 @@ def counts(values: list[str]) -> dict[str, int]:
 
 
 def extract_pdf(data: bytes) -> str:
+    """从PDF二进制数据中提取文本。"""
     from io import BytesIO
 
     reader = PdfReader(BytesIO(data))

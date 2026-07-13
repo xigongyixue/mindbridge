@@ -10,6 +10,7 @@ from app.services.ai import AiClient, PromptTemplates, has_consult_signal, has_h
 
 @dataclass
 class PsychologyAssessment:
+    """心理评估结果数据类。"""
     emotion: EmotionLabel
     emotion_score: float
     risk: RiskLevel
@@ -18,10 +19,14 @@ class PsychologyAssessment:
 
 
 class PsychologicalAssessmentService:
+    """心理评估服务类。"""
+
     def __init__(self, ai: AiClient):
+        """初始化评估服务。"""
         self.ai = ai
 
     def assess(self, text: str, history: list[AiMessage] | None = None) -> PsychologyAssessment:
+        """对文本进行心理风险评估并返回结果。"""
         if has_high_risk_signal(text):
             return PsychologyAssessment(EmotionLabel.HIGH_RISK, 4.0, RiskLevel.HIGH, 0.95, "检测到明确高风险表达")
         try:
@@ -44,6 +49,7 @@ class PsychologicalAssessmentService:
 
 
 def heuristic(text: str) -> PsychologyAssessment:
+    """基于关键词的启发式心理评估。"""
     if has_consult_signal(text):
         if any(word in text.lower() for word in ["抑郁", "低落", "崩溃", "难过", "depress", "hopeless"]):
             return PsychologyAssessment(EmotionLabel.DEPRESSED, 3.1, RiskLevel.MEDIUM, 0.75, "检测到低落或抑郁相关表达")
@@ -52,6 +58,7 @@ def heuristic(text: str) -> PsychologyAssessment:
 
 
 def score_for_emotion(emotion: EmotionLabel) -> float:
+    """根据情绪标签返回对应分数。"""
     return {
         EmotionLabel.HIGH_RISK: 4.0,
         EmotionLabel.DEPRESSED: 3.0,
@@ -61,6 +68,7 @@ def score_for_emotion(emotion: EmotionLabel) -> float:
 
 
 def risk_from_score(score: float) -> RiskLevel:
+    """根据情绪分数推断风险等级。"""
     if score >= 4:
         return RiskLevel.HIGH
     if score >= 3:
@@ -69,4 +77,5 @@ def risk_from_score(score: float) -> RiskLevel:
 
 
 def risk_order(risk: RiskLevel) -> int:
+    """返回风险等级的排序权重。"""
     return {RiskLevel.LOW: 1, RiskLevel.MEDIUM: 2, RiskLevel.HIGH: 3}[risk]

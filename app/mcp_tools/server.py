@@ -15,7 +15,7 @@ mcp = FastMCP("mindbridge-python-tools")
 
 @mcp.tool()
 def mindbridge_excel_report(report_id: int) -> str:
-    """Write one psychological risk report into the MindBridge Excel ledger."""
+    """将心理风险报告写入 Excel 台账。"""
     create_schema()
     db = SessionLocal()
     try:
@@ -30,7 +30,7 @@ def mindbridge_excel_report(report_id: int) -> str:
 
 @mcp.tool()
 def mindbridge_case_create(report_id: int) -> str:
-    """Create or return the active MindBridge risk case for one psychological report."""
+    """为心理报告创建或返回风险个案。"""
     create_schema()
     db = SessionLocal()
     try:
@@ -45,7 +45,7 @@ def mindbridge_case_create(report_id: int) -> str:
 
 @mcp.tool()
 def mindbridge_alert_send(case_id: int) -> str:
-    """Send or record the counselor alert for one MindBridge risk case."""
+    """为风险个案发送或记录辅导员预警。"""
     create_schema()
     db = SessionLocal()
     try:
@@ -62,7 +62,7 @@ def mindbridge_alert_send(case_id: int) -> str:
 
 @mcp.tool()
 def mindbridge_alert_ack(case_id: int, actor: str, note: str = "") -> str:
-    """Mark a MindBridge risk case as acknowledged by a counselor or administrator."""
+    """标记风险个案已被辅导员确认。"""
     create_schema()
     db = SessionLocal()
     try:
@@ -76,7 +76,7 @@ def mindbridge_alert_ack(case_id: int, actor: str, note: str = "") -> str:
 
 @mcp.tool()
 def mindbridge_case_note_add(case_id: int, actor: str, note: str) -> str:
-    """Append a follow-up note to a MindBridge risk case."""
+    """为风险个案追加跟进备注。"""
     create_schema()
     db = SessionLocal()
     try:
@@ -90,7 +90,7 @@ def mindbridge_case_note_add(case_id: int, actor: str, note: str) -> str:
 
 @mcp.tool()
 def mindbridge_alert_notify(report_id: int) -> str:
-    """Send a high-risk alert email and record the notification result for one psychological report."""
+    """发送高风险预警邮件并记录结果。"""
     create_schema()
     db = SessionLocal()
     try:

@@ -20,11 +20,15 @@ EXCEL_WRITE_LOCK = threading.Lock()
 
 
 class ToolOrchestrationService:
+    """工具编排服务，协调 Excel、个案与预警。"""
+
     def __init__(self, db: Session, settings: Settings):
+        """初始化数据库会话与配置。"""
         self.db = db
         self.settings = settings
 
     def write_excel(self, report: PsychologicalReport) -> ExcelRecord:
+        """将心理报告写入 Excel 台账。"""
         existing = (
             self.db.query(ExcelRecord)
             .filter(ExcelRecord.report_id == report.id, ExcelRecord.status == ToolStatus.SUCCESS.value)
@@ -51,6 +55,7 @@ class ToolOrchestrationService:
         return record
 
     def create_case(self, report: PsychologicalReport) -> RiskCase:
+        """根据心理报告创建或复用风险个案。"""
         existing = self.db.query(RiskCase).filter(RiskCase.report_id == report.id).first()
         if existing is not None:
             return existing
@@ -68,6 +73,7 @@ class ToolOrchestrationService:
         return case
 
     def send_case_alert(self, case: RiskCase) -> AlertRecord:
+        """发送个案预警并更新状态。"""
         report = self.db.get(PsychologicalReport, case.report_id)
         if report is None:
             raise RuntimeError(f"report {case.report_id} not found")
@@ -80,6 +86,7 @@ class ToolOrchestrationService:
         return record
 
     def acknowledge_case(self, case_id: int, actor: str, note: str = "") -> RiskCase:
+        """确认接手风险个案。"""
         case = self.db.get(RiskCase, case_id)
         if case is None:
             raise RuntimeError(f"case {case_id} not found")
@@ -94,6 +101,7 @@ class ToolOrchestrationService:
         return case
 
     def add_case_note(self, case_id: int, actor: str, note: str) -> CaseNote:
+        """为风险个案添加跟进备注。"""
         case = self.db.get(RiskCase, case_id)
         if case is None:
             raise RuntimeError(f"case {case_id} not found")
@@ -104,6 +112,7 @@ class ToolOrchestrationService:
         return record
 
     def notify(self, report: PsychologicalReport, case: RiskCase | None = None) -> AlertRecord:
+        """发送高风险预警邮件或记录日志。"""
         existing = (
             self.db.query(AlertRecord)
             .filter(AlertRecord.report_id == report.id, AlertRecord.status == ToolStatus.SUCCESS.value)
@@ -147,6 +156,7 @@ class ToolOrchestrationService:
         return self._save_alert(report, recipient, ToolStatus.SUCCESS.value, f"高风险预警邮件已发送：reportId={report.id}")
 
     def _save_alert(self, report: PsychologicalReport, recipient: str, status: str, message: str) -> AlertRecord:
+        """保存预警记录到数据库。"""
         record = AlertRecord(
             report_id=report.id,
             channel="email",
@@ -159,6 +169,7 @@ class ToolOrchestrationService:
         return record
 
     def _add_case_note(self, case_id: int, actor: str, note: str) -> CaseNote:
+        """创建个案备注记录（不提交）。"""
         if not note:
             raise RuntimeError("case note cannot be empty")
         record = CaseNote(case_id=case_id, actor=actor, note=note)
@@ -166,6 +177,7 @@ class ToolOrchestrationService:
         return record
 
     def _missing_email_config(self) -> list[str]:
+        """检查缺失的邮件配置项。"""
         missing = []
         if not self.settings.smtp_host.strip():
             missing.append("SMTP_HOST")
@@ -176,6 +188,7 @@ class ToolOrchestrationService:
         return missing
 
     def _send_alert_email(self, report: PsychologicalReport, case: RiskCase | None = None) -> None:
+        """通过 SMTP 发送预警邮件。"""
         message = EmailMessage()
         message["Subject"] = f"{self.settings.alert_email_subject_prefix} reportId={report.id}"
         message["From"] = self._sender()
@@ -201,11 +214,13 @@ class ToolOrchestrationService:
             self._send_message(server, message)
 
     def _send_message(self, server: smtplib.SMTP, message: EmailMessage) -> None:
+        """登录 SMTP 并发送邮件。"""
         if self.settings.smtp_username:
             server.login(self.settings.smtp_username, self.settings.smtp_password)
         server.send_message(message)
 
     def _email_body(self, report: PsychologicalReport, case: RiskCase | None = None) -> str:
+        """生成预警邮件正文。"""
         user = self.db.get(UserAccount, report.user_id)
         username = user.username if user else f"userId={report.user_id}"
         display_name = user.display_name if user else ""
@@ -229,14 +244,17 @@ class ToolOrchestrationService:
         )
 
     def _primary_owner(self) -> str:
+        """获取首要负责人。"""
         recipients = self._recipients()
         if recipients:
             return recipients[0]
         return "unassigned"
 
     def _sender(self) -> str:
+        """获取发件人邮箱地址。"""
         return self.settings.alert_email_from.strip() or self.settings.smtp_username.strip()
 
     def _recipients(self) -> list[str]:
+        """解析收件人邮箱列表。"""
         normalized = self.settings.alert_email_to.replace(";", ",")
         return [recipient.strip() for recipient in normalized.split(",") if recipient.strip()]

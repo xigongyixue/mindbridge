@@ -7,16 +7,21 @@ from app.schemas.dtos import AgentRunTraceResponse, CaseNoteResponse, Conversati
 
 
 class ReportService:
+    """报告与记录查询服务。"""
+
     def __init__(self, db: Session):
+        """初始化报告服务实例。"""
         self.db = db
 
     def latest_reports(self, user_id: int | None = None) -> list[ReportResponse]:
+        """返回最新的心理报告列表。"""
         query = self.db.query(PsychologicalReport).order_by(PsychologicalReport.created_at.desc())
         if user_id is not None:
             query = query.filter(PsychologicalReport.user_id == user_id)
         return [self._report_response(item) for item in query.limit(100).all()]
 
     def excel_records(self) -> list[ToolRecordResponse]:
+        """返回最新的Excel导出记录。"""
         rows = self.db.query(ExcelRecord).order_by(ExcelRecord.created_at.desc()).limit(100).all()
         return [
             ToolRecordResponse(id=row.id, reportId=row.report_id, status=row.status, message=row.message, createdAt=row.created_at, filePath=row.file_path)
@@ -24,6 +29,7 @@ class ReportService:
         ]
 
     def alert_records(self) -> list[ToolRecordResponse]:
+        """返回最新的预警记录。"""
         rows = self.db.query(AlertRecord).order_by(AlertRecord.created_at.desc()).limit(100).all()
         return [
             ToolRecordResponse(
@@ -39,6 +45,7 @@ class ReportService:
         ]
 
     def risk_cases(self) -> list[RiskCaseResponse]:
+        """返回最新的风险个案列表。"""
         rows = self.db.query(RiskCase).order_by(RiskCase.updated_at.desc()).limit(100).all()
         return [
             RiskCaseResponse(
@@ -58,6 +65,7 @@ class ReportService:
         ]
 
     def case_notes(self, case_id: int) -> list[CaseNoteResponse]:
+        """返回指定个案的备注列表。"""
         rows = self.db.query(CaseNote).filter(CaseNote.case_id == case_id).order_by(CaseNote.created_at.asc()).all()
         return [
             CaseNoteResponse(id=row.id, caseId=row.case_id, actor=row.actor, note=row.note, createdAt=row.created_at)
@@ -65,6 +73,7 @@ class ReportService:
         ]
 
     def tool_jobs(self) -> list[ToolJobResponse]:
+        """返回最新的工具任务列表。"""
         rows = self.db.query(ToolJob).order_by(ToolJob.created_at.desc()).limit(100).all()
         return [
             ToolJobResponse(
@@ -84,6 +93,7 @@ class ReportService:
         ]
 
     def dead_letters(self) -> list[DeadLetterResponse]:
+        """返回最新的死信记录。"""
         rows = self.db.query(DeadLetterRecord).order_by(DeadLetterRecord.created_at.desc()).limit(100).all()
         return [
             DeadLetterResponse(
@@ -100,6 +110,7 @@ class ReportService:
 
 
 def agent_run_traces(self) -> list[AgentRunTraceResponse]:
+    """返回最新的Agent运行轨迹列表。"""
     rows = self.db.query(AgentRunTrace).order_by(AgentRunTrace.created_at.desc()).limit(100).all()
     responses = []
     for row in rows:
@@ -126,6 +137,7 @@ def agent_run_traces(self) -> list[AgentRunTraceResponse]:
     return responses
 
 def tool_audits(self) -> list[ToolAuditResponse]:
+    """返回最新的工具审计记录列表。"""
     rows = self.db.query(ToolAuditRecord).order_by(ToolAuditRecord.created_at.desc()).limit(100).all()
     return [
         ToolAuditResponse(
@@ -145,6 +157,7 @@ def tool_audits(self) -> list[ToolAuditResponse]:
     ]
 
     def conversation(self, public_id: str) -> ConversationResponse:
+        """根据会话公开ID返回完整对话记录。"""
         session = self.db.query(ChatSession).filter(ChatSession.public_id == public_id).first()
         if session is None:
             raise ValueError("Session not found")
@@ -156,6 +169,7 @@ def tool_audits(self) -> list[ToolAuditResponse]:
         )
 
     def _report_response(self, report: PsychologicalReport) -> ReportResponse:
+        """将心理报告实体转换为响应对象。"""
         user = self.db.get(UserAccount, report.user_id)
         session = self.db.get(ChatSession, report.session_id)
         return ReportResponse(
@@ -175,10 +189,10 @@ def tool_audits(self) -> list[ToolAuditResponse]:
 
 
 def _loads(raw: str, default):
+    """安全解析JSON字符串，失败时返回默认值。"""
     import json
 
     try:
         return json.loads(raw or "")
     except Exception:
         return default
-

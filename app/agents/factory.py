@@ -9,41 +9,21 @@ from app.core.config import Settings
 
 
 def create_agent_runtime(db: Session, settings: Settings) -> AgentRuntimeService:
-    if wants_event_driven(settings):
-        from app.agents.event_driven_runtime import EventDrivenAgentRuntimeService
-
-        return EventDrivenAgentRuntimeService(db, settings)
-    if wants_langgraph(settings) and langgraph_available():
-        from app.agents.langgraph_runtime import LangGraphAgentRuntimeService
-
-        return LangGraphAgentRuntimeService(db, settings)
+    """创建并返回 Agent 运行时实例（统一使用 LangGraph DAG 运行时）。"""
     return AgentRuntimeService(db, settings)
 
 
 def agent_framework_status(settings: Settings) -> dict:
-    requested = settings.agent_framework.lower()
+    """返回当前 Agent 框架的状态信息，包括请求的框架、实际激活的框架和可用性。"""
     available = langgraph_available()
-    if requested in {"event_driven_multi_agent", "multi_agent", "actors"}:
-        active = "event_driven_multi_agent"
-    elif requested == "langgraph" and available:
-        active = "langgraph"
-    else:
-        active = "custom"
     return {
-        "requested": requested,
-        "active": active,
+        "requested": settings.agent_framework.lower(),
+        "active": "langgraph",
         "langgraphAvailable": available,
-        "fallback": active != requested and not (requested == "multi_agent" and active == "event_driven_multi_agent"),
+        "fallback": False,
     }
 
 
-def wants_event_driven(settings: Settings) -> bool:
-    return settings.agent_framework.lower() in {"event_driven_multi_agent", "multi_agent", "actors"}
-
-
-def wants_langgraph(settings: Settings) -> bool:
-    return settings.agent_framework.lower() == "langgraph"
-
-
 def langgraph_available() -> bool:
+    """检测当前环境中是否安装了 langgraph 包。"""
     return find_spec("langgraph") is not None

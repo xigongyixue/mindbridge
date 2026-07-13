@@ -11,14 +11,19 @@ from app.core.enums import RiskLevel
 
 
 class McpToolError(RuntimeError):
+    """MCP工具调用异常。"""
     pass
 
 
 class MindBridgeMcpToolClient:
+    """MindBridge MCP工具客户端，负责调用外部工具。"""
+
     def __init__(self, settings: Settings):
+        """初始化MCP工具客户端。"""
         self.settings = settings
 
     async def handle_report(self, report_id: int, risk_level: str | None) -> list[str]:
+        """根据报告ID和风险等级调用MCP工具链。"""
         try:
             async with self._session() as session:
                 results = [
@@ -41,6 +46,7 @@ class MindBridgeMcpToolClient:
 
     @asynccontextmanager
     async def _session(self) -> AsyncIterator[Any]:
+        """创建并管理MCP客户端会话上下文。"""
         try:
             from mcp import ClientSession, StdioServerParameters
             from mcp.client.stdio import stdio_client
@@ -64,6 +70,7 @@ class MindBridgeMcpToolClient:
                 yield session
 
     async def _call_tool(self, session: Any, name: str, arguments: dict[str, Any]) -> str:
+        """调用指定MCP工具并返回结果文本。"""
         result = await session.call_tool(name, arguments=arguments)
         message = self._result_message(result)
         if getattr(result, "isError", False):
@@ -71,6 +78,7 @@ class MindBridgeMcpToolClient:
         return message
 
     def _result_message(self, result: Any) -> str:
+        """从MCP工具结果中提取消息文本。"""
         parts = []
         for item in getattr(result, "content", []) or []:
             text = getattr(item, "text", None)
@@ -81,5 +89,6 @@ class MindBridgeMcpToolClient:
         return str(structured if structured is not None else result)
 
     def _extract_case_id(self, message: str) -> int | None:
+        """从消息文本中提取个案ID。"""
         match = re.search(r"caseId=(\d+)", message)
         return int(match.group(1)) if match else None

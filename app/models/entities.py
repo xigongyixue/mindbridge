@@ -10,10 +10,13 @@ from app.core.database import Base
 
 
 def now() -> datetime:
+    """返回当前 UTC 时间。"""
     return datetime.utcnow()
 
 
 class UserAccount(Base):
+    """用户账户实体。"""
+
     __tablename__ = "user_accounts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -27,14 +30,18 @@ class UserAccount(Base):
 
     @property
     def roles(self) -> list[str]:
+        """获取用户角色列表。"""
         return [role for role in self.roles_csv.split(",") if role]
 
     @roles.setter
     def roles(self, value: list[str] | set[str]) -> None:
+        """设置用户角色列表。"""
         self.roles_csv = ",".join(sorted(value))
 
 
 class ChatSession(Base):
+    """对话会话实体。"""
+
     __tablename__ = "chat_sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -48,10 +55,13 @@ class ChatSession(Base):
     messages: Mapped[list["ChatMessage"]] = relationship(back_populates="session", cascade="all, delete-orphan")
 
     def touch(self) -> None:
+        """更新会话最后修改时间。"""
         self.updated_at = now()
 
 
 class ChatMessage(Base):
+    """对话消息实体。"""
+
     __tablename__ = "chat_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -65,6 +75,8 @@ class ChatMessage(Base):
 
 
 class KnowledgeChunk(Base):
+    """知识库分块实体。"""
+
     __tablename__ = "knowledge_chunks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -76,6 +88,8 @@ class KnowledgeChunk(Base):
 
 
 class PsychologicalReport(Base):
+    """心理评估报告实体。"""
+
     __tablename__ = "psychological_reports"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -92,6 +106,8 @@ class PsychologicalReport(Base):
 
 
 class RiskCase(Base):
+    """风险个案实体。"""
+
     __tablename__ = "risk_cases"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -108,6 +124,8 @@ class RiskCase(Base):
 
 
 class CaseNote(Base):
+    """个案跟进备注实体。"""
+
     __tablename__ = "case_notes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -118,6 +136,8 @@ class CaseNote(Base):
 
 
 class AlertRecord(Base):
+    """预警通知记录实体。"""
+
     __tablename__ = "alert_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -130,6 +150,8 @@ class AlertRecord(Base):
 
 
 class ExcelRecord(Base):
+    """Excel 台账记录实体。"""
+
     __tablename__ = "excel_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -141,6 +163,8 @@ class ExcelRecord(Base):
 
 
 class ToolJob(Base):
+    """工具任务实体。"""
+
     __tablename__ = "tool_jobs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -157,6 +181,8 @@ class ToolJob(Base):
 
 
 class DeadLetterRecord(Base):
+    """死信队列记录实体。"""
+
     __tablename__ = "dead_letter_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -169,6 +195,8 @@ class DeadLetterRecord(Base):
 
 
 class AgentRunTrace(Base):
+    """智能体运行轨迹实体。"""
+
     __tablename__ = "agent_run_traces"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -188,6 +216,8 @@ class AgentRunTrace(Base):
 
 
 class ToolAuditRecord(Base):
+    """工具审计记录实体。"""
+
     __tablename__ = "tool_audit_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -201,4 +231,3 @@ class ToolAuditRecord(Base):
     payload: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=now)
-

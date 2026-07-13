@@ -6,6 +6,7 @@ from app.core.config import Settings
 
 
 def finetuned_model_status(settings: Settings) -> dict:
+    """获取微调模型文件的运行时状态。"""
     root = settings.project_root
     model_dir = resolve_model_dir(settings)
     gguf_path = model_dir / settings.finetuned_model_file
@@ -22,5 +23,6 @@ def finetuned_model_status(settings: Settings) -> dict:
 
 
 def resolve_model_dir(settings: Settings) -> Path:
+    """解析微调模型目录的完整路径。"""
     path = Path(settings.finetuned_model_dir)
     return path if path.is_absolute() else settings.project_root / path

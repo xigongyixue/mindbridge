@@ -17,18 +17,23 @@ logger = logging.getLogger(__name__)
 
 
 class MemoryCompactionSettings(Protocol):
+    """记忆压缩设置的协议接口。"""
     memory_compaction_enabled: bool
     memory_compaction_recent_messages: int
     memory_summary_max_chars: int
 
 
 class RedisShortTermMemoryStore:
+    """基于Redis的短期记忆存储。"""
+
     def __init__(self, settings: Settings):
+        """初始化Redis短期记忆存储。"""
         self.settings = settings
         self.privacy = PrivacySanitizer()
         self.client = self._connect()
 
     def load_recent(self, session_public_id: str) -> list[AiMessage]:
+        """加载指定会话最近的对话消息。"""
         if self.client is None:
             return []
         try:
@@ -38,9 +43,11 @@ class RedisShortTermMemoryStore:
             return []
 
     def messages_from_rows(self, rows: list[ChatMessage]) -> list[AiMessage]:
+        """将数据库行记录转为消息列表。"""
         return [self._message_from_row(row) for row in rows]
 
     def append(self, session_public_id: str, role: str, content: str) -> None:
+        """向会话追加一条消息。"""
         if self.client is None:
             return
         key = self._key(session_public_id)
@@ -53,6 +60,7 @@ class RedisShortTermMemoryStore:
             logger.warning("Redis memory append unavailable: %s", exc)
 
     def replace(self, session_public_id: str, messages: list[AiMessage]) -> None:
+        """替换指定会话的全部消息。"""
         if self.client is None:
             return
         key = self._key(session_public_id)
@@ -68,6 +76,7 @@ class RedisShortTermMemoryStore:
             logger.warning("Redis memory replace unavailable: %s", exc)
 
     def _read(self, session_public_id: str, limit: int) -> list[AiMessage]:
+        """从Redis读取指定数量的历史消息。"""
         raw_items = self.client.lrange(self._key(session_public_id), -limit, -1)
         messages = []
         for raw in raw_items:
@@ -82,6 +91,7 @@ class RedisShortTermMemoryStore:
         return messages
 
     def _connect(self):
+        """创建并测试Redis连接。"""
         try:
             redis_module = import_module("redis")
         except ModuleNotFoundError as exc:
@@ -100,9 +110,11 @@ class RedisShortTermMemoryStore:
         return client
 
     def _message_from_row(self, row: ChatMessage) -> AiMessage:
+        """将单行记录转为消息对象。"""
         return AiMessage(role=row.role.lower(), content=self.privacy.sanitize(row.content))
 
     def _serialize(self, role: str, content: str) -> str:
+        """将消息序列化为JSON字符串。"""
         return json.dumps(
             {
                 "role": role.lower(),
@@ -113,6 +125,7 @@ class RedisShortTermMemoryStore:
         )
 
     def _key(self, session_public_id: str) -> str:
+        """生成会话对应的Redis键名。"""
         return f"mindbridge:short-term-memory:{session_public_id}"
 
 
@@ -121,11 +134,7 @@ def compact_history_for_prompt(
     settings: MemoryCompactionSettings,
     current_input: str = "",
 ) -> tuple[list[AiMessage], str]:
-    """Return bounded prompt history plus a student-safe memory brief.
-
-    The summary is deterministic and avoids diagnostic labels. It is intended
-    for prompt context and auditability, not for student-facing display.
-    """
+    """压缩历史记录并生成提示上下文。"""
 
     sanitized = [AiMessage(role=item.role, content=PrivacySanitizer().sanitize(item.content)) for item in history]
     if not sanitized:
@@ -150,6 +159,7 @@ def compact_history_for_prompt(
 
 
 def summarize_history_for_memory(history: list[AiMessage], current_input: str = "", max_chars: int = 500) -> str:
+    """为记忆上下文生成历史摘要。"""
     privacy = PrivacySanitizer()
     user_points = []
     assistant_points = []
@@ -175,6 +185,7 @@ def summarize_history_for_memory(history: list[AiMessage], current_input: str = 
 
 
 def _clip(text: str, limit: int) -> str:
+    """将文本截断到指定长度并加省略号。"""
     normalized = " ".join((text or "").split())
     if len(normalized) <= limit:
         return normalized

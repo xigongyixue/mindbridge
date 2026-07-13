@@ -16,11 +16,13 @@ FALLBACK_RETRIEVAL_LABEL = "local BM25 + hybrid_score reranker"
 
 
 class VectorStoreUnavailable(RuntimeError):
+    """向量库不可用时抛出的异常。"""
     pass
 
 
 @dataclass
 class VectorSearchHit:
+    """向量检索命中结果数据类。"""
     chunk_id: int | None
     source: str
     source_index: int
@@ -29,9 +31,10 @@ class VectorSearchHit:
 
 
 class ChromaKnowledgeStore:
-    """Primary RAG path: OpenAI text-embedding-3-small embeddings stored and queried in Chroma."""
+    """基于Chroma的知识向量存储，主检索方案。"""
 
     def __init__(self, settings: Settings):
+        """初始化Chroma向量库客户端。"""
         self.settings = settings
         self.can_embed = False
         self.error = ""
@@ -63,6 +66,7 @@ class ChromaKnowledgeStore:
         self.can_embed = settings.knowledge_vector_enabled
 
     def upsert_chunks(self, chunks: list[KnowledgeChunk], embeddings: list[list[float]]) -> int:
+        """批量写入或更新知识分块及其嵌入。"""
         rows = [chunk for chunk in chunks if chunk.id is not None and chunk.content.strip()]
         if not rows:
             return 0
@@ -77,6 +81,7 @@ class ChromaKnowledgeStore:
         return len(rows)
 
     def sync_chunks(self, chunks: list[KnowledgeChunk], embeddings: list[list[float]]) -> int:
+        """同步分块数据，删除过期记录并更新。"""
         valid_ids = {self._id(int(chunk.id)) for chunk in chunks if chunk.id is not None}
         current_ids = set(self.collection.get().get("ids", []))
         stale_ids = sorted(current_ids - valid_ids)
@@ -85,16 +90,19 @@ class ChromaKnowledgeStore:
         return self.upsert_chunks(chunks, embeddings)
 
     def has_exact_chunk_ids(self, chunks: list[KnowledgeChunk]) -> bool:
+        """判断向量库中的分块ID是否完全匹配。"""
         valid_ids = {self._id(int(chunk.id)) for chunk in chunks if chunk.id is not None}
         current_ids = set(self.collection.get().get("ids", []))
         return current_ids == valid_ids
 
     def delete_source(self, source: str) -> None:
+        """删除指定来源的所有向量数据。"""
         if not self.can_embed:
             return
         self.collection.delete(where={"source": source})
 
     def query(self, query_embedding: list[float], top_k: int) -> list[VectorSearchHit]:
+        """根据查询嵌入向量检索最相似的分块。"""
         result = self.collection.query(
             query_embeddings=[query_embedding],
             n_results=top_k,
@@ -119,11 +127,13 @@ class ChromaKnowledgeStore:
         return hits
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        """将文本列表转换为嵌入向量列表。"""
         if not self.can_embed:
             raise VectorStoreUnavailable(self.error or "Chroma + text-embedding-3-small 主检索方案不可用")
         return self._embed(texts)
 
     def snapshot(self) -> str | None:
+        """创建向量库持久化目录的快照。"""
         if not self.can_embed:
             return None
         if not self.persist_dir.exists():
@@ -136,11 +146,13 @@ class ChromaKnowledgeStore:
         return str(destination)
 
     def count(self) -> int:
+        """返回向量库中当前分块数量。"""
         if not self.can_embed:
             return 0
         return int(self.collection.count())
 
     def _embed(self, texts: list[str]) -> list[list[float]]:
+        """调用OpenAI嵌入接口获取文本向量。"""
         payload = {
             "model": self.settings.openai_embedding_model,
             "input": [text if text.strip() else " " for text in texts],
@@ -160,16 +172,19 @@ class ChromaKnowledgeStore:
         return [[float(value) for value in embedding] for embedding in embeddings]
 
     def _resolve_path(self, value: str) -> Path:
+        """将路径解析为绝对路径。"""
         path = Path(value)
         return path if path.is_absolute() else self.settings.project_root / path
 
     def _prune_snapshots(self, snapshot_root: Path) -> None:
+        """清理过期快照，仅保留指定数量。"""
         keep = max(1, self.settings.chroma_snapshot_keep)
         snapshots = sorted([path for path in snapshot_root.iterdir() if path.is_dir()], reverse=True)
         for stale in snapshots[keep:]:
             shutil.rmtree(stale, ignore_errors=True)
 
     def _id(self, chunk_id: int) -> str:
+        """根据分块ID生成向量库中的唯一标识。"""
         return f"knowledge-chunk-{chunk_id}"
 
 

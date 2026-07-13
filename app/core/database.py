@@ -5,6 +5,7 @@ from app.core.config import get_settings
 
 
 class Base(DeclarativeBase):
+    """所有 ORM 模型声明的基类。"""
     pass
 
 
@@ -24,6 +25,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 def get_db():
+    """依赖注入用的数据库会话生成器。"""
     db = SessionLocal()
     try:
         yield db
@@ -32,4 +34,5 @@ def get_db():
 
 
 def session_scope() -> Session:
+    """创建并返回一个新的数据库会话。"""
     return SessionLocal()

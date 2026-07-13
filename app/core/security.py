@@ -11,14 +11,17 @@ from app.models.entities import UserAccount
 
 
 def hash_password(password: str) -> str:
+    """对明文密码进行 SHA256 哈希。"""
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
 def verify_password(password: str, hashed: str) -> bool:
+    """校验明文密码与哈希值是否匹配。"""
     return hmac.compare_digest(hash_password(password), hashed)
 
 
 def _credentials(request: Request) -> tuple[str, str]:
+    """从请求头解析 Basic 认证凭据。"""
     header = request.headers.get("authorization", "")
     if not header.lower().startswith("basic "):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing Basic authorization")
@@ -31,6 +34,7 @@ def _credentials(request: Request) -> tuple[str, str]:
 
 
 def current_user(request: Request, db: Annotated[Session, Depends(get_db)]) -> UserAccount:
+    """根据请求凭据返回当前登录用户。"""
     username, password = _credentials(request)
     user = db.query(UserAccount).filter(UserAccount.username == username).first()
     if user is None or not verify_password(password, user.password_hash):
@@ -39,7 +43,7 @@ def current_user(request: Request, db: Annotated[Session, Depends(get_db)]) -> U
 
 
 def require_admin(user: Annotated[UserAccount, Depends(current_user)]) -> UserAccount:
+    """要求当前用户具有管理员角色。"""
     if "ROLE_ADMIN" not in user.roles:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin role required")
     return user
-

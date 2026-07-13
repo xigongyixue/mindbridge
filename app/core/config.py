@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """应用全局配置项集合。"""
     agent_framework: str = "event_driven_multi_agent"
     agent_max_rounds: int = 8
     agent_max_claims_per_round: int = 4
@@ -98,9 +99,11 @@ class Settings(BaseSettings):
 
     @property
     def project_root(self) -> Path:
+        """返回项目根目录路径。"""
         return Path(__file__).resolve().parents[2]
 
 
 @lru_cache
 def get_settings() -> Settings:
+    """获取并缓存全局配置实例。"""
     return Settings()

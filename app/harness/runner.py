@@ -291,7 +291,6 @@ def run_agent_routing_harness(context: HarnessContext) -> dict:
     from app.models.entities import ChatSession, UserAccount
     from app.schemas.dtos import ChatRequest
 
-    context.settings.agent_framework = "custom"
     db = context.session()
     observed = []
     try:
@@ -367,7 +366,7 @@ def run_standard_skills_harness(context: HarnessContext) -> dict:
     statuses = MindBridgeSkillLibrary.status_items()
     failed = [item for item in statuses if item["status"] != "READY"]
     expect(not failed, f"standard skill load failures: {failed}")
-    expect(all(item["path"].endswith("/SKILL.md") for item in statuses), "skill status did not expose SKILL.md paths")
+    expect(all(Path(item["path"]).name == "SKILL.md" for item in statuses), "skill status did not expose SKILL.md paths")
 
     selected_names = MindBridgeSkillLibrary.response_skill_names(
         IntentType.CONSULT,
@@ -485,7 +484,7 @@ def run_api_harness(context: HarnessContext) -> dict:
         expect(agent_status.status_code == 200, f"agent status failed: {agent_status.status_code}")
         status_skills = agent_status.json()["skills"]
         expect(len(status_skills) >= 7, f"agent status exposed too few standard skills: {len(status_skills)}")
-        expect(all(skill["path"].endswith("/SKILL.md") for skill in status_skills), "agent status did not expose standard skill paths")
+        expect(all(Path(skill["path"]).name == "SKILL.md" for skill in status_skills), "agent status did not expose standard skill paths")
 
         admin_chat = client.post("/api/chat/stream", headers=admin_auth, json={"message": "hello"})
         expect(admin_chat.status_code == 403, f"admin chat should be forbidden, got {admin_chat.status_code}")

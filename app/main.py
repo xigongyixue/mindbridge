@@ -11,10 +11,12 @@ from app.services.tool_queue import get_tool_queue_worker
 
 
 def create_app() -> FastAPI:
+    """创建并配置 FastAPI 应用实例。"""
     app = FastAPI(title="MindBridge Python", version="0.1.0")
 
     @app.middleware("http")
     async def no_cache_frontend_assets(request, call_next):
+        """禁用前端静态资源的缓存。"""
         response = await call_next(request)
         path = request.url.path
         if path == "/" or path.endswith((".html", ".js", ".css")):
@@ -23,6 +25,7 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def startup() -> None:
+        """应用启动时初始化数据库与工具队列。"""
         create_schema()
         db = SessionLocal()
         try:
@@ -35,6 +38,7 @@ def create_app() -> FastAPI:
 
     @app.on_event("shutdown")
     def shutdown() -> None:
+        """应用关闭时停止工具队列工作线程。"""
         worker = getattr(app.state, "tool_queue_worker", None)
         if worker is not None:
             worker.stop()
