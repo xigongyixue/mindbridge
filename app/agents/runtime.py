@@ -186,7 +186,8 @@ class AgentRuntimeService:
         retrieved = self.knowledge.retrieve(query, self.settings.knowledge_top_k)
         context.knowledge_query = query
         context.retrieved_knowledge = retrieved
-        context.steps.append(AgentStep(len(context.steps) + 1, "KnowledgeAgent", "RETRIEVE_KNOWLEDGE", f"query={query}; retrieved={len(retrieved)}"))
+
+
         return state
 
     def _risk_guardian_node(self, state: GraphState) -> GraphState:

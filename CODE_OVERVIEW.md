@@ -127,7 +127,7 @@ AI 客户端与 prompt 模板。`PromptTemplates` 提供 `intent_prompt`（意�
 `ReportService` —— 管理员后台查询服务。提供心理报告、Excel 台账、预警记录、风险个案、个案备注、工具任务、死信、Agent trace、工具审计、会话明细等查询，转换为 Pydantic DTO 返回。
 
 ### `app/services/skills.py`
-`MindBridgeSkillRegistry`/`MindBridgeSkillLibrary` —— 标准化 Skill 体系。从 `skills/*/SKILL.md` 加载（解析 YAML frontmatter + body），支持 `list_skills`/`status_items`/`get_required`/`template_for`/`response_skill_context`/`response_skill_names`（按意图与风险选择 skill：CHAT 不选；HIGH 风险选 `supportive_response_baseline` + `high_risk_safety_plan`；CONSULT 按关键词追加 `anxiety_grounding_support`/`sleep_routine_support`/`academic_stress_planning`/`referral_resource_guidance`）。`counselor_handoff_summary()` 渲染辅导员交接摘要模板。`validation_issues()` 检查目录名一致性、`## Workflow` 小节、description 长度、`counselor_handoff_summary` 必须包含 text 模板。
+`MindBridgeSkillRegistry`/`MindBridgeSkillLibrary` —— 标准化 Skill 体系。从 `skills/*/SKILL.md` 加载（解析 YAML frontmatter + body），支持 `list_skills`/`status_items`/`get_required`/`template_for`/`response_skill_context`/`response_skill_names`（按意图与风险选择 skill：CHAT 不选；HIGH 风险选 `supportive_response_baseline` + `high_risk_safety_plan`；CONSULT 按关键词追加 `anxiety_grounding_support`/`sleep_routine_support`/`academic_stress_planning`/`referral_resource_guidance`）。`counselor_handoff_summary()` 渲染辅导员交接摘要模板。`validation_issues()` 检查目录名一致性、`## 工作流程` 小节、description 长度、`counselor_handoff_summary` 必须包含 text 模板。
 
 ### `app/services/model_assets.py`
 `finetuned_model_status`/`resolve_model_dir` —— 检查本地微调 GGUF 模型资产是否就绪（gguf 文件存在性、大小、Modelfile 存在性），返回给 `/api/agent/status`。

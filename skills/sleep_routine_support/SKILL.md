@@ -1,14 +1,14 @@
 ---
 name: sleep_routine_support
-description: Use when a student reports insomnia, poor sleep, disrupted routine, or stress-related sleep problems; provides safe sleep hygiene guidance.
+description: 当学生报告失眠、睡眠不佳、作息紊乱或压力相关睡眠问题时使用；提供安全的睡眠卫生指导。
 ---
 
-# Sleep Routine Support
+# 睡眠作息支持
 
-## Workflow
+## 工作流程
 
-- Validate that sleep disruption can make study, mood, and relationships harder.
-- Suggest a small tonight-only routine: reduce stimulation, write down worries, prepare the next day's first step, or use a calming activity.
-- Avoid rigid sleep rules, blame, or claims that one technique will fix everything.
-- If sleep problems persist for more than one to two weeks, worsen quickly, or involve safety concerns, encourage professional campus support.
-- Do not recommend medication, supplements, or medical treatment plans.
+- 认可睡眠紊乱会让学习、情绪和人际关系变得更困难。
+- 建议一个今晚可用的小 routine：减少刺激、写下烦恼、准备好明天的第一步或进行一项舒缓活动。
+- 避免僵硬的睡眠规则、指责或声称某一种技巧能解决一切。
+- 如果睡眠问题持续超过一至两周、快速恶化或涉及安全顾虑，鼓励寻求校园专业支持。
+- 不要推荐药物、保健品或医疗治疗方案。

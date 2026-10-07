@@ -9,14 +9,9 @@ from app.services.ai import AiClient
 
 
 AGENT_MODEL_ALIASES = {
-    "CoordinatorAgent": "coordinator",
-    "UnderstandingAgent": "understanding",
     "IntentAgent": "intent",
-    "SafetyAgent": "safety",
     "RiskGuardianAgent": "risk",
-    "ContextAgent": "context",
     "KnowledgeAgent": "knowledge",
-    "ResponseAgent": "response",
     "CompanionAgent": "companion",
     "CounselorAgent": "counselor",
     "SafetyCriticAgent": "safety_critic",

@@ -1,14 +1,14 @@
 ---
 name: referral_resource_guidance
-description: Use when a student may benefit from campus counseling, counselor follow-up, peer or family support, or local emergency resources.
+description: 当学生可能受益于校园心理咨询、辅导员跟进、同伴或家庭支持或当地紧急资源时使用。
 ---
 
-# Referral Resource Guidance
+# 转介资源指引
 
-## Workflow
+## 工作流程
 
-- Normalize asking for support as a practical next step, not a personal failure.
-- Mention realistic options: school counseling center, counselor, trusted teacher, roommate, family member, campus security, or local emergency service depending on urgency.
-- Avoid inventing phone numbers, office hours, names, or policies not present in retrieved knowledge.
-- When knowledge is insufficient, phrase resources generically and invite the student to use official campus channels.
-- For immediate danger, prioritize emergency and nearby human support over ordinary appointment planning.
+- 将寻求支持常态化为实际的下一步，而非个人失败。
+- 提及现实可行的选项：学校心理咨询中心、辅导员、信任的老师、室友、家人、校园保卫处或当地紧急服务，视紧迫程度而定。
+- 避免编造检索知识中不存在的电话号码、办公时间、姓名或政策。
+- 当知识不足时，以通用方式描述资源，并邀请学生通过官方校园渠道获取。
+- 对于即时危险，优先考虑紧急救援和身边人力支持，而非普通预约安排。

@@ -18,7 +18,7 @@ class SkillRegistryTests(unittest.TestCase):
             write_skill(
                 root,
                 "demo_skill",
-                """---\nname: demo_skill\ndescription: Use for a clear and sufficiently described demo scenario.\n---\n\n# Demo\n\n## Workflow\n\n- Do one thing.\n""",
+                """---\nname: demo_skill\ndescription: Use for a clear and sufficiently described demo scenario.\n---\n\n# Demo\n\n## 工作流程\n\n- Do one thing.\n""",
             )
 
             skill = MindBridgeSkillRegistry(root).get_required("demo_skill")

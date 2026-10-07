@@ -1,19 +1,19 @@
 ---
 name: counselor_handoff_summary
-description: Use when creating a staff-facing handoff summary for counselors or administrators after a psychological risk report is generated.
+description: 当心理风险报告生成后，为辅导员或管理员创建面向工作人员的交接摘要时使用。
 ---
 
-# Counselor Handoff Summary
+# 辅导员交接摘要
 
-## Workflow
+## 工作流程
 
-- Write for counselors or administrators, not for the student.
-- Preserve the student's original meaning while avoiding unnecessary dangerous detail.
-- Include the report identity, student identity, risk level, emotion label, confidence, model summary, follow-up actions, and a bounded excerpt of the student's expression.
-- Make the first follow-up action about current location, whether the student is accompanied, and immediate safety.
-- Keep the handoff factual and actionable; do not add diagnosis or unsupported assumptions.
+- 面向辅导员或管理员撰写，而非面向学生。
+- 保留学生原始含义，但避免不必要的危险细节。
+- 包含报告标识、学生标识、风险等级、情绪标签、置信度、模型摘要、跟进建议以及学生表达的有限摘录。
+- 首要跟进行动应涉及当前位置、学生是否有人陪伴以及即时安全。
+- 保持交接摘要基于事实且可操作；不要添加诊断或无依据的推测。
 
-## Output Template
+## 输出模板
 
 ```text
 应用 skill: counselor_handoff_summary

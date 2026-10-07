@@ -15,11 +15,13 @@ from typing import Callable
 
 
 class HarnessFailure(AssertionError):
-    pass
+    """Harness 断言失败异常，用于标记测试不通过。"""
 
 
 @dataclass
 class CheckResult:
+    """单个检查项的执行结果，包含名称、是否通过、详情和失败原因列表。"""
+
     name: str
     passed: bool
     details: dict = field(default_factory=dict)
@@ -28,31 +30,40 @@ class CheckResult:
 
 @dataclass
 class HarnessContext:
+    """Harness 运行上下文，保存根目录、目标目录、配置对象和数据库实例。"""
+
     root: Path
     target_dir: Path
     settings: object
     database: object
 
     def session(self):
+        """创建并返回一个新的数据库会话。"""
         return self.database.SessionLocal()
 
 
 class InMemoryShortTermMemoryStore:
+    """内存中的短期记忆存储（替代 Redis），用于测试环境隔离。"""
+
     _messages: dict[str, list[object]] = {}
 
     def __init__(self, settings):
+        """初始化，保存配置对象。"""
         self.settings = settings
 
     def load_recent(self, session_public_id: str) -> list[object]:
+        """加载指定会话最近的消息，数量受配置限制。"""
         limit = self.settings.redis_memory_max_messages
         return list(self._messages.get(session_public_id, []))[-limit:]
 
     def messages_from_rows(self, rows: list[object]) -> list[object]:
+        """将数据库消息行转换为 AiMessage 对象列表。"""
         from app.schemas.dtos import AiMessage
 
         return [AiMessage(role=row.role.lower(), content=row.content) for row in rows]
 
     def append(self, session_public_id: str, role: str, content: str) -> None:
+        """追加一条消息到指定会话，自动脱敏并保持最大条数限制。"""
         from app.schemas.dtos import AiMessage
         from app.services.privacy import PrivacySanitizer
 
@@ -61,6 +72,7 @@ class InMemoryShortTermMemoryStore:
         del values[:-self.settings.redis_memory_max_messages]
 
     def replace(self, session_public_id: str, messages: list[object]) -> None:
+        """替换指定会话的全部消息，自动脱敏并保留最近的限制条数。"""
         from app.schemas.dtos import AiMessage
         from app.services.privacy import PrivacySanitizer
 
@@ -72,10 +84,12 @@ class InMemoryShortTermMemoryStore:
 
     @classmethod
     def reset(cls) -> None:
+        """清空所有内存中的消息缓存。"""
         cls._messages.clear()
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Harness 主入口函数：解析参数、配置环境、运行套件、输出报告。"""
     parser = argparse.ArgumentParser(description="Run MindBridge engineering harness checks.")
     parser.add_argument(
         "--suite",
@@ -108,6 +122,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def configure_environment() -> None:
+    """配置测试环境：清理旧 SQLite 数据库、设置环境变量（mock AI、禁用向量、关闭队列等）。"""
     root = Path(__file__).resolve().parents[2]
     target_dir = root / "target" / "harness"
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -129,6 +144,7 @@ def configure_environment() -> None:
 
 
 def build_context() -> HarnessContext:
+    """构建 Harness 运行上下文：重新加载配置、重建 SQLite 引擎与会话工厂。"""
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
@@ -150,6 +166,7 @@ def build_context() -> HarnessContext:
 
 
 def install_harness_patches() -> None:
+    """安装测试补丁：将 RedisShortTermMemoryStore 替换为内存实现，避免依赖外部服务。"""
     import app.agents.harness as harness_module
     import app.agents.runtime as runtime_module
 
@@ -158,6 +175,7 @@ def install_harness_patches() -> None:
 
 
 def reset_database(context: HarnessContext) -> None:
+    """重置数据库：删除所有表、重建、注入 seed 数据（内置知识库、默认用户）。"""
     from app.core.bootstrap import seed_data
 
     context.database.Base.metadata.drop_all(bind=context.database.engine)
@@ -170,6 +188,7 @@ def reset_database(context: HarnessContext) -> None:
 
 
 def resolve_suites(requested: list[str] | None) -> list[tuple[str, Callable[[HarnessContext], dict]]]:
+    """根据命令行参数解析要运行的测试套件，支持别名（如 risk → Risk Safety Harness）。"""
     all_suites: list[tuple[str, Callable[[HarnessContext], dict]]] = [
         ("Risk Safety Harness", run_risk_safety_harness),
         ("Agent Routing Harness", run_agent_routing_harness),
@@ -194,6 +213,7 @@ def resolve_suites(requested: list[str] | None) -> list[tuple[str, Callable[[Har
 
 
 def run_check(name: str, fn: Callable[[HarnessContext], dict], context: HarnessContext) -> CheckResult:
+    """运行单个检查函数，捕获异常并将结果包装为 CheckResult 对象。"""
     try:
         return CheckResult(name=name, passed=True, details=fn(context))
     except HarnessFailure as exc:
@@ -207,6 +227,7 @@ def run_check(name: str, fn: Callable[[HarnessContext], dict], context: HarnessC
 
 
 def run_risk_safety_harness(context: HarnessContext) -> dict:
+    """风险安全测试套件：验证高风险/咨询/普通聊天场景的报告生成、风险等级、工具入队、元数据不泄露。"""
     from app.core.enums import RiskLevel, ToolJobKind
     from app.models.entities import PsychologicalReport, ToolJob, UserAccount
     from app.schemas.dtos import ChatRequest
@@ -286,6 +307,7 @@ def run_risk_safety_harness(context: HarnessContext) -> dict:
 
 
 def run_agent_routing_harness(context: HarnessContext) -> dict:
+    """Agent 路由测试套件：验证 CHAT 走 Companion、CONSULT/RISK 走 Counselor 的 DAG 执行路径。"""
     from app.agents.harness import MindBridgeAgentHarness
     from app.core.enums import IntentType, RiskLevel
     from app.models.entities import ChatSession, UserAccount
@@ -345,6 +367,7 @@ def run_agent_routing_harness(context: HarnessContext) -> dict:
 
 
 def run_standard_skills_harness(context: HarnessContext) -> dict:
+    """标准 Skill 测试套件：验证 7 个标准 Skill 加载、按意图风险选择、交接摘要模板渲染。"""
     from app.core.enums import EmotionLabel, IntentType, RiskLevel
     from app.models.entities import PsychologicalReport, UserAccount
     from app.services.skills import MindBridgeSkillLibrary
@@ -428,6 +451,7 @@ def run_standard_skills_harness(context: HarnessContext) -> dict:
 
 
 def run_rag_harness(context: HarnessContext) -> dict:
+    """RAG 检索测试套件：使用内置评测集验证 Recall@K、Precision@K、MRR、NDCG、HitRate 指标。"""
     from app.rag_eval.runner import evaluate_case
     from app.services.knowledge import KnowledgeService
 
@@ -462,6 +486,7 @@ def run_rag_harness(context: HarnessContext) -> dict:
 
 
 def run_api_harness(context: HarnessContext) -> dict:
+    """API 端点测试套件：验证健康检查、Basic Auth、角色隔离、SSE 聊天流、知识库管理接口。"""
     from fastapi.testclient import TestClient
 
     from app.main import create_app
@@ -519,6 +544,7 @@ def run_api_harness(context: HarnessContext) -> dict:
 
 
 def run_tool_queue_harness(context: HarnessContext) -> dict:
+    """工具队列测试套件：验证 Excel/case/alert 任务依赖、幂等性、限流、死信队列机制。"""
     from app.core.enums import EmotionLabel, IntentType, RiskCaseStatus, RiskLevel, ToolJobKind, ToolJobStatus, ToolStatus
     from app.models.entities import DeadLetterRecord, PsychologicalReport, ToolJob, ChatSession, UserAccount
     from app.services.tool_queue import RateLimiter, ToolQueueService, ToolQueueWorker
@@ -614,6 +640,7 @@ def run_tool_queue_harness(context: HarnessContext) -> dict:
 
 
 def collect_chat_stream(service, user, request) -> tuple[list[dict], str]:
+    """收集异步 SSE 聊天流的所有事件，合并 token 内容为完整助手回复。"""
     async def collect() -> list[dict]:
         events = []
         async for chunk in service.stream_chat(user, request):
@@ -626,6 +653,7 @@ def collect_chat_stream(service, user, request) -> tuple[list[dict], str]:
 
 
 def parse_sse(chunk: str) -> list[dict]:
+    """解析 SSE 协议块，提取事件名称和 JSON 数据，转换为字典列表。"""
     events = []
     for block in chunk.strip().split("\n\n"):
         if not block:
@@ -642,16 +670,19 @@ def parse_sse(chunk: str) -> list[dict]:
 
 
 def basic_auth(username: str, password: str) -> dict[str, str]:
+    """生成 HTTP Basic Authentication 头，用于 API 测试请求。"""
     token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
     return {"Authorization": f"Basic {token}"}
 
 
 def expect(condition: bool, message: str) -> None:
+    """断言辅助函数：条件不满足时抛出 HarnessFailure，标记测试不通过。"""
     if not condition:
         raise HarnessFailure(message)
 
 
 def write_report(context: HarnessContext, results: list[CheckResult]) -> dict:
+    """生成 JSON 格式的测试报告，写入 target/harness 目录并返回报告字典。"""
     report = {
         "createdAt": datetime.utcnow().isoformat(),
         "environment": {
@@ -678,6 +709,7 @@ def write_report(context: HarnessContext, results: list[CheckResult]) -> dict:
 
 
 def print_report(report: dict) -> None:
+    """以可读的文本格式打印测试报告到标准输出，显示通过/失败状态和失败原因。"""
     print("MindBridge Engineering Harness")
     print(f"Report: {report['reportPath']}")
     print("")

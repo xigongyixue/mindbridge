@@ -1,14 +1,14 @@
 ---
 name: anxiety_grounding_support
-description: Use when a student describes anxiety, panic, overwhelm, racing thoughts, or physical tension; provides grounding and stabilization steps.
+description: 当学生描述焦虑、恐慌、崩溃、思维奔逸或身体紧张时使用；提供稳定化与 grounding 步骤。
 ---
 
-# Anxiety Grounding Support
+# 焦虑稳定化支持
 
-## Workflow
+## 工作流程
 
-- Name the anxiety or panic experience without treating it as a diagnosis.
-- Offer one immediate grounding action, such as slower breathing, noticing five visible objects, or placing both feet on the floor.
-- Keep body instructions gentle and optional; do not imply the student is failing if the method does not work.
-- Help the student separate the next small action from the whole problem.
-- If symptoms are severe, repeated, or interfere with class, sleep, or safety, suggest contacting the school counseling center or a trusted adult.
+- 指出焦虑或恐慌体验，但不将其视为诊断。
+- 提供一个即时的稳定化动作，如放慢呼吸、注意周围五个可见物体或双脚踩实地面。
+- 身体指令要温和且可选；不要暗示学生如果方法无效就是失败。
+- 帮助学生将下一步小行动从整体问题中分离出来。
+- 如果症状严重、反复发作或影响上课、睡眠、安全，建议联系学校心理咨询中心或可信任的成年人。

@@ -38,8 +38,8 @@ class MindBridgeSkill:
         issues: list[SkillValidationIssue] = []
         if self.path.parent.name != self.name:
             issues.append(SkillValidationIssue("WARN", f"目录名 {self.path.parent.name} 与 skill name {self.name} 不一致"))
-        if "## Workflow" not in self.body:
-            issues.append(SkillValidationIssue("WARN", "建议包含 ## Workflow 小节，便于人工审阅和模型稳定加载"))
+        if "## 工作流程" not in self.body:
+            issues.append(SkillValidationIssue("WARN", "建议包含 ## 工作流程 小节，便于人工审阅和模型稳定加载"))
         if len(self.description) < 20:
             issues.append(SkillValidationIssue("WARN", "description 太短，可能无法准确表达触发场景"))
         if self.name == "counselor_handoff_summary" and "```text" not in self.body:

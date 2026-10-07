@@ -1,14 +1,14 @@
 ---
 name: academic_stress_planning
-description: Use when a student describes exams, coursework, grades, papers, burnout, or academic pressure; turns pressure into a small next-step plan.
+description: 当学生描述考试、课业、成绩、论文、倦怠或学业压力时使用；将压力转化为小步下一步计划。
 ---
 
-# Academic Stress Planning
+# 学业压力规划
 
-## Workflow
+## 工作流程
 
-- Acknowledge the pressure without equating grades with personal worth.
-- Help the student choose one narrow task, one time block, and one realistic stopping point.
-- Prefer concrete planning over motivational slogans.
-- Encourage contacting a teacher, advisor, classmate, counselor, or academic support channel when the load is no longer manageable alone.
-- If the student expresses hopelessness or danger, defer to high-risk safety planning.
+- 认可压力的存在，但不将成绩等同于个人价值。
+- 帮助学生选择一个狭窄的任务、一个时间段和一个现实的停止点。
+- 优先采用具体规划而非激励口号。
+- 当负担已无法独自承受时，鼓励联系老师、导师、同学、辅导员或学业支持渠道。
+- 如果学生表达绝望或危险，转为高风险安全计划处理。

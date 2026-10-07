@@ -1,17 +1,17 @@
 ---
 name: high_risk_safety_plan
-description: Use when a student expresses self-harm, suicide, immediate danger, or other high-risk crisis signals; prioritizes short-term safety and real-world support.
+description: 当学生表达自伤、自杀、即时危险或其他高风险危机信号时使用；优先保障短期安全与现实支持。
 ---
 
-# High Risk Safety Plan
+# 高风险安全计划
 
-## Workflow
+## 工作流程
 
-- Use short sentences to show that the student's pain has been heard; do not argue, diagnose, shame, or debate.
-- Make current safety the priority before any emotional analysis or long-term planning.
-- Encourage the student to immediately contact a trusted nearby person, counselor, school counseling center, campus security, or local emergency service.
-- Encourage the student not to stay alone and to move away from objects, places, or conditions that could increase danger.
-- Give one concrete action the student can take in the next 10 to 15 minutes.
-- If a question is needed, ask only one question directly related to current safety.
-- Do not provide self-harm or suicide methods, tool details, lethal means, or dangerous operating steps.
-- Do not promise absolute confidentiality in a way that blocks real-world rescue or support.
+- 用简短的句子让学生感到痛苦被听见；不要争辩、诊断、羞辱或辩论。
+- 在任何情绪分析或长期规划之前，将当前安全放在首位。
+- 鼓励学生立即联系身边可信任的人、辅导员、学校心理咨询中心、校园保卫处或当地紧急服务。
+- 鼓励学生不要独处，远离可能增加危险的物品、地点或环境。
+- 给出一个学生在接下来 10 到 15 分钟内可以采取的具体行动。
+- 如需提问，只问一个与当前安全直接相关的问题。
+- 不要提供自伤或自杀方法、工具细节、致命手段或危险操作步骤。
+- 不要以阻止现实救援或支持的方式承诺绝对保密。
